@@ -1,0 +1,296 @@
+import java.util.*;
+import java.util.List;
+import java.util.Map.Entry;
+
+import javax.swing.*;
+import javax.swing.event.*;
+import javax.swing.text.html.*;
+
+public class Kantinun extends JFrame implements HyperlinkListener {
+
+	private static final long serialVersionUID = 1L;
+	private JButton backButton;
+	private JTextField TextField;
+	private JEditorPane display;
+	private JTextField TextField2;
+	private JEditorPane display2;
+	private ArrayList<String> pageList = new ArrayList<String>();
+	private ArrayList<String> pageList2 = new ArrayList<String>();
+	private JTextArea TextFieldStatus;
+
+	public Kantinun() {
+		super("Kantinun ThaiThong s5050215@kmitl.ac.th - Java Web Browser (Network Programming Class Assignment)");
+
+		System.out.println("Open");
+
+		setSize(1000, 720);
+
+
+		addWindowListener(new WindowAdapter() {
+			public void windowClosing(WindowEvent e) {
+
+			}
+		});    
+
+		JPanel buttonPanel = new JPanel();
+		TextField = new JTextField(35);
+		TextField.addKeyListener(new KeyAdapter() {
+			public void keyReleased(KeyEvent e) {
+				if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+					GetPage();
+				}
+			}
+		});
+
+		TextField2 = new JTextField(35);
+		TextField2.addKeyListener(new KeyAdapter() {
+			public void keyReleased(KeyEvent e) {
+				if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+					GetPage();
+				}
+			}
+		});
+
+		TextFieldStatus = new JTextArea();
+		TextFieldStatus.setEditable(false);
+		TextFieldStatus.setSize(600, 300);
+
+		JButton goButton = new JButton("Get Page");
+		goButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				GetPage();
+			}
+		});
+		backButton = new JButton("Back");
+		backButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				Back();
+			}
+		});
+		backButton.setEnabled(false);
+
+		display = new JEditorPane();
+		display.setContentType("text/html");
+		display.setEditable(false);
+		display.addHyperlinkListener(this);
+		display.setSize(480, 320);
+		display.setPreferredSize(new Dimension(display.getWidth(), display.getHeight()));
+
+		display2 = new JEditorPane();
+		display2.setContentType("text/html");
+		display2.setEditable(false);
+		display2.setSize(480, 320);
+		display2.setPreferredSize(new Dimension(display2.getWidth(), display2.getHeight()));
+		display2.addHyperlinkListener(new HyperlinkListener() {
+			public void hyperlinkUpdate(HyperlinkEvent event) {
+				HyperlinkEvent.EventType eventType = event.getEventType();
+				if (eventType == HyperlinkEvent.EventType.ACTIVATED) {
+					if (event instanceof HTMLFrameHyperlinkEvent) {
+						HTMLFrameHyperlinkEvent linkEvent =
+								(HTMLFrameHyperlinkEvent) event;
+						HTMLDocument document =
+								(HTMLDocument) display2.getDocument();
+						document.processHTMLFrameHyperlinkEvent(linkEvent);
+					} else {
+						showPage2(event.getURL(), true);
+					}
+				}
+			}
+		});
+		
+		JScrollPane scroll = new JScrollPane(TextFieldStatus);
+		scroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
+		scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+		scroll.setSize(TextFieldStatus.getWidth(), TextFieldStatus.getHeight());
+		scroll.setPreferredSize(new Dimension(TextFieldStatus.getWidth(), TextFieldStatus.getHeight()));
+
+		buttonPanel.add(backButton);
+		buttonPanel.add(TextField);
+		buttonPanel.add(goButton);
+		buttonPanel.add(TextField2);
+
+		JPanel centerPanel = new JPanel();
+		centerPanel.add(new JScrollPane(display));
+		centerPanel.add(new JScrollPane(display2));
+
+		getContentPane().setLayout(new BorderLayout());	
+		getContentPane().add(scroll, BorderLayout.NORTH);
+		getContentPane().add(buttonPanel, BorderLayout.SOUTH);
+		getContentPane().add(centerPanel, BorderLayout.CENTER);
+	}
+
+	private void appendText(String tName, String msg) {
+		String str = (tName + " : " + msg + "\n");
+		TextFieldStatus.append(str);
+		TextFieldStatus.setCaretPosition(TextFieldStatus.getText().length());
+	}
+	
+	public String getHeader(String url) { 
+		String str = "";
+		str = str + " Header Of Url: " + url + "\n";
+		try { 
+			URLConnection conn = new URL(url).openConnection(); 
+			Map<String, List<String>> map = conn.getHeaderFields(); 
+			for (Entry<String, List<String>> m : map.entrySet()) { 
+				if(m.getKey() == null) {
+					str = str + m.getValue() + "\n";
+				} else {
+					str = str + m.getKey() + ": " + m.getValue() + "\n";
+				}
+			}
+			List<String> contentLength = map.get("Content-Length"); 
+			if (contentLength == null) { 
+				str = str + "Content-Length doesn't present in Header!\n"; 
+			} else {
+				for (String header : contentLength) {
+					str = str + "Content-Lenght: " + header + "\n";
+				} 
+			}
+		} catch (Exception e) { 
+			for(StackTraceElement ste :e.getStackTrace()) {
+				str = str + ste.toString() + "\n";
+			}
+		}
+		return str;
+	}
+
+	private void Back() {
+		URL currentUrl = display.getPage();
+		int pageIndex = pageList.indexOf(currentUrl.toString());
+		URL currentUrl2 = display2.getPage();
+		int pageIndex2 = pageList2.indexOf(currentUrl2.toString());
+		try {
+			showPage( new URL((String) pageList.get(pageIndex - 1)), false);
+			showPage2( new URL((String) pageList2.get(pageIndex2 - 1)), false);
+		} catch (Exception e) {}
+	}
+	private void GetPage() {
+		URL verifiedUrl = verifyUrl(TextField.getText());
+		URL verifiedUrl2 = verifyUrl(TextField2.getText());
+		if (verifiedUrl != null) {
+			showPage(verifiedUrl, true);
+		} 
+		if (verifiedUrl2 != null) {
+			showPage2(verifiedUrl2, true);
+		} 
+	}
+
+
+	private URL verifyUrl(String url) {
+		if (!url.toLowerCase().startsWith("http://"))
+			return null;
+		URL verifiedUrl = null;
+		try {
+			verifiedUrl = new URL(url);
+		} catch (Exception e) {
+			return null;
+		}
+
+		return verifiedUrl;
+	}
+
+	private void showPage(final URL pageUrl, final boolean addToList) {
+		appendText("T1", "Start");
+		new Thread(new Runnable() {
+			@Override
+			public void run() {
+				appendText("T1", "Process");
+				try {
+					appendText("T1", getHeader(pageUrl.toString()));
+					setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+					URL currentUrl = display.getPage();
+					display.setPage(pageUrl);
+					URL newUrl = display.getPage();
+					if (addToList) {
+						int listSize = pageList.size();
+						if (listSize > 0) {
+							int pageIndex =
+									pageList.indexOf(currentUrl.toString());
+							if (pageIndex < listSize - 1) {
+								for (int i = listSize - 1; i > pageIndex; i--) {
+									pageList.remove(i);
+								}
+							}
+						}
+						pageList.add(newUrl.toString());
+					}
+					TextField.setText(newUrl.toString());
+					updateButtons();
+				} catch (Exception e) {
+
+				} finally {
+					setCursor(Cursor.getDefaultCursor());
+				}
+				appendText("T1", "Stop");
+			}
+		}).start();
+	}
+	
+	private void showPage2(final URL pageUrl, final boolean addToList) {
+		appendText("T2", "Start");
+		new Thread(new Runnable() {
+			@Override
+			public void run() {
+				appendText("T2", "Process");
+				setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+				try {
+					appendText("T2", getHeader(pageUrl.toString()));
+					URL currentUrl = display2.getPage();
+					display2.setPage(pageUrl);
+					URL newUrl = display2.getPage();
+					if (addToList) {
+						int listSize = pageList2.size();
+						if (listSize > 0) {
+							int pageIndex =
+									pageList2.indexOf(currentUrl.toString());
+							if (pageIndex < listSize - 1) {
+								for (int i = listSize - 1; i > pageIndex; i--) {
+									pageList2.remove(i);
+								}
+							}
+						}
+						pageList2.add(newUrl.toString());
+					}
+					TextField2.setText(newUrl.toString());
+					updateButtons();
+				} catch (Exception e) {
+
+				} finally {
+					setCursor(Cursor.getDefaultCursor());
+				}
+				appendText("T2", "Stop");
+			}
+		}).start();
+	}
+
+	private void updateButtons() {
+		if (pageList.size() < 2) {
+			backButton.setEnabled(false);   
+		} else {
+			URL currentUrl = display.getPage();
+			int pageIndex = pageList.indexOf(currentUrl.toString());
+			backButton.setEnabled(pageIndex > 0);
+
+		}
+	}
+	public void hyperlinkUpdate(HyperlinkEvent event) {
+		HyperlinkEvent.EventType eventType = event.getEventType();
+		if (eventType == HyperlinkEvent.EventType.ACTIVATED) {
+			if (event instanceof HTMLFrameHyperlinkEvent) {
+				HTMLFrameHyperlinkEvent linkEvent =
+						(HTMLFrameHyperlinkEvent) event;
+				HTMLDocument document =
+						(HTMLDocument) display.getDocument();
+				document.processHTMLFrameHyperlinkEvent(linkEvent);
+			} else {
+				showPage(event.getURL(), true);
+			}
+		}
+	}
+
+	@SuppressWarnings("deprecation")
+	public static void main(String[] args) {
+		Kantinun browser = new Kantinun();
+		browser.show();
+	}
+}
